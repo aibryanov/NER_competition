@@ -66,7 +66,7 @@ class ModelConfig(BaseModel):
 
 class TrainingConfig(BaseModel):
     epoch: int = Field(50, ge=1)
-    dropout: float = Field(0.7, ge=0, le=1)
+    dropout: float = Field(0.3, ge=0, le=1)
     gradient_clip: float = Field(10.0, gt=0)
     weights: str = ""
     name: str = "competition_bilstm_crf"
