@@ -15,6 +15,7 @@ class BiLSTM_CRF(nn.Module):
         tag_to_ix,
         embedding_dim,
         hidden_dim,
+        word_lstm_layers=2,
         char_to_ix=None,
         pre_word_embeds=None,
         char_out_dimension=25,
@@ -44,6 +45,7 @@ class BiLSTM_CRF(nn.Module):
         self.use_gpu = use_gpu
         self.embedding_dim = embedding_dim
         self.hidden_dim = hidden_dim
+        self.word_lstm_layers = word_lstm_layers
         self.vocab_size = vocab_size
         self.tag_to_ix = tag_to_ix
         self.use_crf = use_crf
@@ -66,6 +68,8 @@ class BiLSTM_CRF(nn.Module):
 
         if self.char_mode not in {"CNN", "LSTM"}:
             raise ValueError(f"Unsupported char mode: {self.char_mode}")
+        if self.word_lstm_layers < 1:
+            raise ValueError(f"word_lstm_layers must be positive, got {self.word_lstm_layers}")
         if char_to_ix is None:
             raise ValueError("char_to_ix is required for character encoder")
         if self.char_window_size < 1:
@@ -108,7 +112,13 @@ class BiLSTM_CRF(nn.Module):
             init_embedding(self.word_embeds.weight)
 
         self.dropout = nn.Dropout(dropout)
-        self.lstm = nn.LSTM(lstm_input_dim, hidden_dim, bidirectional=True)
+        self.lstm = nn.LSTM(
+            lstm_input_dim,
+            hidden_dim,
+            num_layers=self.word_lstm_layers,
+            bidirectional=True,
+            dropout=dropout if self.word_lstm_layers > 1 else 0.0,
+        )
         init_lstm(self.lstm)
 
         self.hidden2tag = nn.Linear(hidden_dim * 2, self.tagset_size)

@@ -5,6 +5,7 @@ from typing import Any
 import numpy as np
 
 from models.model import BiLSTM_CRF
+from src.date_context import infer_date_classifier_path, train_and_save_date_context_classifier
 from src.config import Config
 from src.data.embeddings_utils import build_embedding_matrix
 from src.data.loaders import load_competition_training_splits, load_fasttext
@@ -40,6 +41,14 @@ def build_training_artifacts(config: Config) -> TrainingArtifacts:
         len(processed_splits["train"]),
         len(processed_splits["dev"]),
     )
+
+    if config.date_context.enabled:
+        train_and_save_date_context_classifier(
+            raw_splits["train"],
+            path=infer_date_classifier_path(config.model_path),
+            window_tokens=config.date_context.window_tokens,
+            confidence_margin=config.date_context.confidence_margin,
+        )
 
     mapping = prepare_mappings(processed_splits["train"], lower=config.preprocessing.lower)
     train_data, dev_data = apply_mapping_to_split(

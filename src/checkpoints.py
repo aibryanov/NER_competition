@@ -36,7 +36,10 @@ def load_mapping_artifact(mapping_path: Path) -> dict[str, Any]:
 
 
 def load_checkpoint_artifact(checkpoint_path: Path, device: torch.device) -> Any:
-    return torch.load(checkpoint_path, map_location=device)
+    try:
+        return torch.load(checkpoint_path, map_location=device, weights_only=False)
+    except TypeError:
+        return torch.load(checkpoint_path, map_location=device)
 
 
 def is_full_checkpoint(payload: Any) -> bool:
@@ -98,8 +101,10 @@ def apply_saved_runtime_settings(payload: dict[str, Any], config: Config) -> Non
     saved_model_values = config_sections.get("model", {})
     if hasattr(config.model, "char_batch_norm") and "char_batch_norm" not in saved_model_values:
         config.model.char_batch_norm = False
+    if hasattr(config.model, "word_lstm_layers") and "word_lstm_layers" not in saved_model_values:
+        config.model.word_lstm_layers = 1
 
-    for section_name in ("model", "preprocessing", "regex", "sentence_entities"):
+    for section_name in ("model", "preprocessing", "regex", "sentence_entities", "date_context"):
         saved_values = config_sections.get(section_name, {})
         if not saved_values:
             continue
@@ -107,6 +112,11 @@ def apply_saved_runtime_settings(payload: dict[str, Any], config: Config) -> Non
         section = getattr(config, section_name)
         for field_name, field_value in saved_values.items():
             if hasattr(section, field_name):
+                if section_name == "regex" and field_name == "enabled_labels":
+                    current_labels = list(getattr(section, field_name))
+                    merged_labels = list(dict.fromkeys(list(field_value) + current_labels))
+                    setattr(section, field_name, merged_labels)
+                    continue
                 setattr(section, field_name, field_value)
 
 
@@ -126,6 +136,7 @@ def build_full_checkpoint(
             "preprocessing": config.preprocessing.model_dump(),
             "regex": config.regex.model_dump(),
             "sentence_entities": config.sentence_entities.model_dump(),
+            "date_context": config.date_context.model_dump(),
         },
     }
 

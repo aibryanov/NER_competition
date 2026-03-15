@@ -207,6 +207,7 @@ def save_mappings(
             "preprocessing": config.preprocessing.model_dump(),
             "regex": config.regex.model_dump(),
             "sentence_entities": config.sentence_entities.model_dump(),
+            "date_context": config.date_context.model_dump(),
         },
         "word_embs": word_embeds,
     }

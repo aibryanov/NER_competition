@@ -15,6 +15,12 @@ from src.checkpoints import (
     load_mapping_artifact,
 )
 from src.config import Config, cfg
+from src.date_context import (
+    infer_date_classifier_path,
+    load_date_context_classifier,
+    relabel_date_spans_with_classifier,
+    train_and_save_date_context_classifier,
+)
 from src.data.competition import load_competition_train_records, split_records
 from src.data.loaders import load_competition_test_set
 from src.data.mapping import CHAR_UNK_TOKEN, WORD_UNK_TOKEN, prepare_dataset
@@ -26,6 +32,33 @@ from src.training.tensors import build_char_tensor
 from src.training.train import define_model
 
 logger = logging.getLogger(__name__)
+
+
+def _load_or_train_date_context_classifier(
+    checkpoint_path: Path,
+    config: Config,
+):
+    if not config.date_context.enabled:
+        return None
+
+    classifier_path = infer_date_classifier_path(checkpoint_path)
+    if classifier_path.exists():
+        logger.info("Loading date context classifier from %s", classifier_path)
+        return load_date_context_classifier(classifier_path)
+
+    logger.info("Date context classifier not found for %s; training a new artifact", checkpoint_path)
+    train_records = load_competition_train_records(config.paths.train_data_file)
+    train_split = split_records(
+        train_records,
+        train_size=config.data.train_size,
+        seed=config.data.seed,
+    )["train"]
+    return train_and_save_date_context_classifier(
+        train_split,
+        path=classifier_path,
+        window_tokens=config.date_context.window_tokens,
+        confidence_margin=config.date_context.confidence_margin,
+    )
 
 
 def load_model_and_mapping_from_files(
@@ -62,6 +95,7 @@ def load_inference_artifacts(
 
     model = define_model(mapping, config)
     load_model_state_dict(model, extract_model_state_dict(checkpoint), context=str(checkpoint_path))
+    model.date_context_classifier = _load_or_train_date_context_classifier(checkpoint_path, config)
     model.to(config.device)
     return model, mapping
 
@@ -150,11 +184,19 @@ def predict_sentence_entity_presence_for_text(model, mapping, text: str, config:
 
 def predict_spans_for_text(model, mapping, text: str, config: Config = cfg) -> list[tuple[int, int, str]]:
     regex_labels = set(config.regex.enabled_labels)
-    model_spans = predict_model_spans_for_text(model, mapping, text, config)
+    model_spans = relabel_date_spans_with_classifier(
+        text,
+        predict_model_spans_for_text(model, mapping, text, config),
+        getattr(model, "date_context_classifier", None),
+    )
     if not regex_labels:
         return model_spans
 
-    regex_spans = extract_regex_spans(text, config.regex.enabled_labels)
+    regex_spans = relabel_date_spans_with_classifier(
+        text,
+        extract_regex_spans(text, config.regex.enabled_labels),
+        getattr(model, "date_context_classifier", None),
+    )
     filtered_model_spans = [span for span in model_spans if span[2] not in regex_labels]
     combined_spans = sorted(set(filtered_model_spans) | set(regex_spans), key=lambda item: (item[0], item[1], item[2]))
     return combined_spans

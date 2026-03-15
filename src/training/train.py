@@ -23,6 +23,7 @@ def define_model(mapping, config):
         tag_to_ix=mapping["tag_to_id"],
         embedding_dim=config.model.word_dim,
         hidden_dim=config.model.word_lstm_dim,
+        word_lstm_layers=config.model.word_lstm_layers,
         char_to_ix=mapping["char_to_id"],
         pre_word_embeds=mapping["word_embs"],
         char_out_dimension=config.model.char_cnn_channels,
@@ -262,7 +263,7 @@ def train(model, train_data, dev_data, mapping, config):
     started_at = time.time()
     logger.info(
         "Training started | epochs=%d optimizer=%s scheduler=%s lr=%.5f emb_lr_scale=%.3f "
-        "momentum=%.3f weight_decay=%.6f char_mode=%s char_batch_norm=%s char_window=%d "
+        "momentum=%.3f weight_decay=%.6f word_lstm_layers=%d char_mode=%s char_batch_norm=%s char_window=%d "
         "crf=%s focal=%s gamma=%.2f focal_weight=%.2f",
         config.training.epoch,
         config.training.optimizer_name,
@@ -271,6 +272,7 @@ def train(model, train_data, dev_data, mapping, config):
         config.training.embedding_learning_rate_scale,
         config.training.momentum,
         config.training.weight_decay,
+        config.model.word_lstm_layers,
         config.model.char_mode,
         config.model.char_batch_norm,
         config.model.char_window_size,

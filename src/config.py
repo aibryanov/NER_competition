@@ -8,6 +8,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 SUPPORTED_REGEX_LABELS = (
     # "Номер телефона",
     "Сведения об ИНН",
+    # "Дата регистрации по месту жительства или пребывания",
     # "Паспортные данные",
     "Номер банковского счета",
     "Номер карты",
@@ -53,6 +54,7 @@ class PreprocessingConfig(BaseModel):
 class ModelConfig(BaseModel):
     word_dim: int = Field(50, gt=0)
     word_lstm_dim: int = Field(300, gt=0)
+    word_lstm_layers: int = Field(1, ge=1)
     char_embedding_dim: int = Field(60, gt=0)
     char_cnn_channels: int = Field(20, gt=0)
     char_batch_norm: bool = True
@@ -114,6 +116,12 @@ class SentenceEntityConfig(BaseModel):
     threshold: float = Field(0.5, gt=0, lt=1)
 
 
+class DateContextConfig(BaseModel):
+    enabled: bool = True
+    window_tokens: int = Field(8, ge=1)
+    confidence_margin: float = Field(1.0, ge=0)
+
+
 class Config(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -128,6 +136,7 @@ class Config(BaseModel):
     eval: EvaluatingConfig = Field(default_factory=EvaluatingConfig)
     regex: RegexConfig = Field(default_factory=RegexConfig)
     sentence_entities: SentenceEntityConfig = Field(default_factory=SentenceEntityConfig)
+    date_context: DateContextConfig = Field(default_factory=DateContextConfig)
     hardware: HardwareConfig = Field(default_factory=HardwareConfig)
 
     @model_validator(mode="after")
