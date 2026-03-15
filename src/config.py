@@ -56,7 +56,7 @@ class ModelConfig(BaseModel):
     word_lstm_dim: int = Field(300, gt=0)
     word_lstm_layers: int = Field(1, ge=1)
     char_embedding_dim: int = Field(60, gt=0)
-    char_cnn_channels: int = Field(20, gt=0)
+    char_cnn_channels: int = Field(30, gt=0)
     char_batch_norm: bool = True
     char_window_size: int = Field(5, gt=0)
     char_lstm_dim: int = Field(30, gt=0)
@@ -68,8 +68,8 @@ class ModelConfig(BaseModel):
 
 class TrainingConfig(BaseModel):
     epoch: int = Field(50, ge=1)
-    dropout: float = Field(0.3, ge=0, le=1)
-    gradient_clip: float = Field(10.0, gt=0)
+    dropout: float = Field(0.7, ge=0, le=1)
+    gradient_clip: float = Field(7.0, gt=0)
     weights: str = ""
     name: str = "competition_bilstm_crf"
     optimizer_name: Literal["sgd", "adam", "adamw", "rmsprop"] = "adamw"
