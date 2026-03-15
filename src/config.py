@@ -52,7 +52,7 @@ class PreprocessingConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     word_dim: int = Field(50, gt=0)
-    word_lstm_dim: int = Field(100, gt=0)
+    word_lstm_dim: int = Field(50, gt=0)
     char_embedding_dim: int = Field(30, gt=0)
     char_cnn_channels: int = Field(30, gt=0)
     char_lstm_dim: int = Field(30, gt=0)
@@ -64,12 +64,12 @@ class ModelConfig(BaseModel):
 
 class TrainingConfig(BaseModel):
     epoch: int = Field(50, ge=1)
-    dropout: float = Field(0.2, ge=0, le=1)
+    dropout: float = Field(0.05, ge=0, le=1)
     gradient_clip: float = Field(5.0, gt=0)
     weights: str = ""
     name: str = "competition_bilstm_crf"
     optimizer_name: Literal["sgd", "adam", "adamw", "rmsprop"] = "adamw"
-    learning_rate: float = Field(0.003, gt=0)
+    learning_rate: float = Field(0.01, gt=0)
     embedding_learning_rate_scale: float = Field(0.2, gt=0)
     momentum: float = 0.9
     weight_decay: float = Field(1e-4, ge=0)
@@ -101,7 +101,7 @@ class RegexConfig(BaseModel):
 
 
 class SentenceEntityConfig(BaseModel):
-    enabled: bool = True
+    enabled: bool = False
     hidden_dim: int = Field(128, gt=0)
     pooling: Literal["mean", "max", "mean_max"] = "mean_max"
     loss_weight: float = Field(0.2, ge=0)
