@@ -5,6 +5,7 @@ from src.config import cfg
 from src.data.crf import forward_alg, forward_calc, score_sentences, viterbi_algo
 from src.data.lstm import get_lstm_features, get_neg_log_likelihood
 from src.data.weights_embeds import init_embedding, init_linear, init_lstm
+from src.training.losses import multiclass_focal_loss
 
 
 class BiLSTM_CRF(nn.Module):
@@ -26,6 +27,9 @@ class BiLSTM_CRF(nn.Module):
         use_crf=True,
         char_mode="CNN",
         dropout=0.5,
+        focal_loss_enabled=True,
+        focal_loss_gamma=2.0,
+        focal_loss_weight=1.0,
         entity_to_ix=None,
         sentence_entity_enabled=True,
         sentence_entity_hidden_dim=128,
@@ -49,6 +53,9 @@ class BiLSTM_CRF(nn.Module):
         self.char_window_size = char_window_size
         self.char_mode = char_mode
         self.char_lstm_dim = char_hidden_dim or cfg.model.char_lstm_dim
+        self.focal_loss_enabled = focal_loss_enabled
+        self.focal_loss_gamma = focal_loss_gamma
+        self.focal_loss_weight = focal_loss_weight
         self.start_tag = start_tag
         self.stop_tag = stop_tag
         self.entity_to_ix = entity_to_ix or {}
@@ -106,6 +113,7 @@ class BiLSTM_CRF(nn.Module):
 
         self.hidden2tag = nn.Linear(hidden_dim * 2, self.tagset_size)
         init_linear(self.hidden2tag)
+        self.register_buffer("focal_loss_alpha", torch.ones(self.tagset_size, dtype=torch.float32))
 
         if self.sentence_entity_enabled:
             sentence_input_dim = hidden_dim * 2 if self.sentence_entity_pooling in {"mean", "max"} else hidden_dim * 4
@@ -121,6 +129,25 @@ class BiLSTM_CRF(nn.Module):
             self.transitions = nn.Parameter(torch.zeros(self.tagset_size, self.tagset_size))
             self.transitions.data[tag_to_ix[self.start_tag], :] = -10000
             self.transitions.data[:, tag_to_ix[self.stop_tag]] = -10000
+
+    def set_focal_loss_alpha(self, alpha):
+        alpha_tensor = torch.as_tensor(alpha, dtype=torch.float32, device=self.focal_loss_alpha.device)
+        if alpha_tensor.shape != self.focal_loss_alpha.shape:
+            raise ValueError(
+                f"Expected focal loss alpha with shape {tuple(self.focal_loss_alpha.shape)}, got {tuple(alpha_tensor.shape)}"
+            )
+        self.focal_loss_alpha.copy_(alpha_tensor)
+
+    def compute_token_focal_loss(self, token_logits, tags, reduction):
+        if not self.focal_loss_enabled:
+            return None
+        return multiclass_focal_loss(
+            token_logits,
+            tags,
+            gamma=self.focal_loss_gamma,
+            alpha=self.focal_loss_alpha,
+            reduction=reduction,
+        )
 
     def pool_sentence_features(self, token_features):
         if token_features.ndim != 2:

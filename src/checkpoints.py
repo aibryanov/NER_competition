@@ -26,6 +26,7 @@ OPTIONAL_AUXILIARY_STATE_PREFIXES = (
     "sentence_entity_hidden.",
     "sentence_entity_output.",
     "char_batch_norm.",
+    "focal_loss_alpha",
 )
 
 

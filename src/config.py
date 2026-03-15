@@ -79,6 +79,10 @@ class TrainingConfig(BaseModel):
     scheduler_factor: float = Field(0.5, gt=0, lt=1)
     scheduler_threshold: float = Field(1e-3, ge=0)
     scheduler_min_lr: float = Field(1e-5, gt=0)
+    focal_loss_enabled: bool = True
+    focal_loss_gamma: float = Field(2.0, ge=0)
+    focal_loss_weight: float = Field(1.0, ge=0)
+    focal_loss_alpha_power: float = Field(0.5, ge=0)
 
 
 class EvaluatingConfig(BaseModel):

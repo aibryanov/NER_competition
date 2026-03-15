@@ -10,6 +10,7 @@ from models.model import BiLSTM_CRF
 from src.checkpoints import extract_model_state_dict, load_checkpoint_artifact, load_model_state_dict, save_full_checkpoint
 from src.data.mapping import CHAR_PAD_TOKEN
 from src.training.eval import evaluating
+from src.training.losses import build_focal_loss_alpha
 from src.training.tensors import prepare_sequence_batch
 
 logger = logging.getLogger(__name__)
@@ -34,6 +35,9 @@ def define_model(mapping, config):
         use_crf=config.model.crf,
         char_mode=config.model.char_mode,
         dropout=config.training.dropout,
+        focal_loss_enabled=config.training.focal_loss_enabled,
+        focal_loss_gamma=config.training.focal_loss_gamma,
+        focal_loss_weight=config.training.focal_loss_weight,
         entity_to_ix=entity_to_ix,
         sentence_entity_enabled=config.sentence_entities.enabled,
         sentence_entity_hidden_dim=config.sentence_entities.hidden_dim,
@@ -45,6 +49,32 @@ def define_model(mapping, config):
     )
     logger.info("Model initialized")
     return model
+
+
+def configure_focal_loss(model, train_data, mapping, config):
+    if not config.training.focal_loss_enabled:
+        logger.info("Focal loss disabled")
+        return
+
+    alpha = build_focal_loss_alpha(
+        train_data,
+        num_classes=len(mapping["tag_to_id"]),
+        alpha_power=config.training.focal_loss_alpha_power,
+    )
+    model.set_focal_loss_alpha(alpha.to(config.device))
+
+    id_to_tag = mapping.get("id_to_tag", {})
+    alpha_summary = ", ".join(
+        f"{id_to_tag.get(index, index)}={value:.3f}"
+        for index, value in sorted(enumerate(alpha.tolist()), key=lambda item: -item[1])[:8]
+    )
+    logger.info(
+        "Configured focal loss | gamma=%.2f weight=%.2f alpha_power=%.2f top_alpha=[%s]",
+        config.training.focal_loss_gamma,
+        config.training.focal_loss_weight,
+        config.training.focal_loss_alpha_power,
+        alpha_summary,
+    )
 
 
 def build_optimizer(model, config):
@@ -226,12 +256,14 @@ def train(model, train_data, dev_data, mapping, config):
 
     model.to(config.device)
     load_initial_weights_if_needed(model, config)
+    configure_focal_loss(model, train_data, mapping, config)
     print_parameter_summary(model)
 
     started_at = time.time()
     logger.info(
         "Training started | epochs=%d optimizer=%s scheduler=%s lr=%.5f emb_lr_scale=%.3f "
-        "momentum=%.3f weight_decay=%.6f char_mode=%s char_batch_norm=%s char_window=%d crf=%s",
+        "momentum=%.3f weight_decay=%.6f char_mode=%s char_batch_norm=%s char_window=%d "
+        "crf=%s focal=%s gamma=%.2f focal_weight=%.2f",
         config.training.epoch,
         config.training.optimizer_name,
         config.training.scheduler_name,
@@ -243,6 +275,9 @@ def train(model, train_data, dev_data, mapping, config):
         config.model.char_batch_norm,
         config.model.char_window_size,
         config.model.crf,
+        config.training.focal_loss_enabled,
+        config.training.focal_loss_gamma,
+        config.training.focal_loss_weight,
     )
 
     for epoch in range(1, config.training.epoch + 1):

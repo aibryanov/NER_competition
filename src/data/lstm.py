@@ -67,13 +67,20 @@ def get_neg_log_likelihood(self, sentence, tags, chars2, chars2_length, restore_
         restore_order,
         return_auxiliary=True,
     )
+    focal_loss = self.compute_token_focal_loss(
+        feats,
+        tags,
+        reduction="sum" if self.use_crf else "mean",
+    )
 
     if self.use_crf:
         forward_score = self._forward_alg(feats)
         gold_score = self._score_sentence(feats, tags)
         loss = forward_score - gold_score
+        if focal_loss is not None:
+            loss = loss + self.focal_loss_weight * focal_loss
     else:
-        loss = nn.functional.cross_entropy(feats, tags)
+        loss = focal_loss if focal_loss is not None else nn.functional.cross_entropy(feats, tags)
 
     if self.sentence_entity_enabled and sentence_entity_logits is not None and entity_targets is not None:
         auxiliary_loss = nn.functional.binary_cross_entropy_with_logits(sentence_entity_logits, entity_targets)
