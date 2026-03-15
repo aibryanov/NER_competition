@@ -17,6 +17,7 @@ class BiLSTM_CRF(nn.Module):
         char_to_ix=None,
         pre_word_embeds=None,
         char_out_dimension=25,
+        char_batch_norm=True,
         char_window_size=5,
         char_embedding_dim=25,
         char_hidden_dim=None,
@@ -44,6 +45,7 @@ class BiLSTM_CRF(nn.Module):
         self.use_crf = use_crf
         self.tagset_size = len(tag_to_ix)
         self.out_channels = char_out_dimension
+        self.char_batch_norm_enabled = char_batch_norm
         self.char_window_size = char_window_size
         self.char_mode = char_mode
         self.char_lstm_dim = char_hidden_dim or cfg.model.char_lstm_dim
@@ -80,6 +82,7 @@ class BiLSTM_CRF(nn.Module):
                 bidirectional=True,
             )
             init_lstm(self.char_lstm)
+            self.char_batch_norm = None
             lstm_input_dim = embedding_dim + self.char_lstm_dim * 2
         else:
             self.char_cnn3 = nn.Conv2d(
@@ -88,6 +91,7 @@ class BiLSTM_CRF(nn.Module):
                 kernel_size=(self.char_window_size, char_embedding_dim),
                 padding=(self.char_window_size - 1, 0),
             )
+            self.char_batch_norm = nn.BatchNorm2d(self.out_channels) if self.char_batch_norm_enabled else None
             lstm_input_dim = embedding_dim + self.out_channels
 
         self.word_embeds = nn.Embedding(vocab_size, embedding_dim)

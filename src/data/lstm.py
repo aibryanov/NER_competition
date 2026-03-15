@@ -30,6 +30,8 @@ def encode_token_features(self, sentence, chars2, chars2_length, restore_order):
     elif self.char_mode == "CNN":
         chars_embeds = self.char_embeds(chars2).unsqueeze(1)
         chars_cnn_out = self.char_cnn3(chars_embeds)
+        if self.char_batch_norm is not None:
+            chars_cnn_out = self.char_batch_norm(chars_cnn_out)
         chars_embeds = nn.functional.max_pool2d(
             chars_cnn_out,
             kernel_size=(chars_cnn_out.size(2), 1),

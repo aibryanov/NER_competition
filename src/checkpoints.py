@@ -25,6 +25,7 @@ MAPPING_KEYS = (
 OPTIONAL_AUXILIARY_STATE_PREFIXES = (
     "sentence_entity_hidden.",
     "sentence_entity_output.",
+    "char_batch_norm.",
 )
 
 
@@ -92,6 +93,10 @@ def apply_saved_runtime_settings(payload: dict[str, Any], config: Config) -> Non
     if not config_sections:
         legacy_parameters = payload.get("parameters", {})
         config_sections = {"model": legacy_parameters} if legacy_parameters else {}
+
+    saved_model_values = config_sections.get("model", {})
+    if hasattr(config.model, "char_batch_norm") and "char_batch_norm" not in saved_model_values:
+        config.model.char_batch_norm = False
 
     for section_name in ("model", "preprocessing", "regex", "sentence_entities"):
         saved_values = config_sections.get(section_name, {})
