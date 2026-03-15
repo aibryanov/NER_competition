@@ -52,9 +52,10 @@ class PreprocessingConfig(BaseModel):
 
 class ModelConfig(BaseModel):
     word_dim: int = Field(50, gt=0)
-    word_lstm_dim: int = Field(50, gt=0)
-    char_embedding_dim: int = Field(30, gt=0)
+    word_lstm_dim: int = Field(300, gt=0)
+    char_embedding_dim: int = Field(60, gt=0)
     char_cnn_channels: int = Field(30, gt=0)
+    char_window_size: int = Field(5, gt=0)
     char_lstm_dim: int = Field(30, gt=0)
     char_mode: Literal["CNN", "LSTM"] = "CNN"
     crf: bool = True

@@ -17,6 +17,7 @@ class BiLSTM_CRF(nn.Module):
         char_to_ix=None,
         pre_word_embeds=None,
         char_out_dimension=25,
+        char_window_size=5,
         char_embedding_dim=25,
         char_hidden_dim=None,
         char_padding_idx=0,
@@ -43,6 +44,7 @@ class BiLSTM_CRF(nn.Module):
         self.use_crf = use_crf
         self.tagset_size = len(tag_to_ix)
         self.out_channels = char_out_dimension
+        self.char_window_size = char_window_size
         self.char_mode = char_mode
         self.char_lstm_dim = char_hidden_dim or cfg.model.char_lstm_dim
         self.start_tag = start_tag
@@ -57,6 +59,8 @@ class BiLSTM_CRF(nn.Module):
             raise ValueError(f"Unsupported char mode: {self.char_mode}")
         if char_to_ix is None:
             raise ValueError("char_to_ix is required for character encoder")
+        if self.char_window_size < 1:
+            raise ValueError(f"char_window_size must be positive, got {self.char_window_size}")
         if self.sentence_entity_pooling not in {"mean", "max", "mean_max"}:
             raise ValueError(f"Unsupported sentence entity pooling: {self.sentence_entity_pooling}")
 
@@ -81,8 +85,8 @@ class BiLSTM_CRF(nn.Module):
             self.char_cnn3 = nn.Conv2d(
                 in_channels=1,
                 out_channels=self.out_channels,
-                kernel_size=(3, char_embedding_dim),
-                padding=(2, 0),
+                kernel_size=(self.char_window_size, char_embedding_dim),
+                padding=(self.char_window_size - 1, 0),
             )
             lstm_input_dim = embedding_dim + self.out_channels
 

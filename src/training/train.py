@@ -25,6 +25,7 @@ def define_model(mapping, config):
         char_to_ix=mapping["char_to_id"],
         pre_word_embeds=mapping["word_embs"],
         char_out_dimension=config.model.char_cnn_channels,
+        char_window_size=config.model.char_window_size,
         char_embedding_dim=config.model.char_embedding_dim,
         char_hidden_dim=config.model.char_lstm_dim,
         char_padding_idx=mapping["char_to_id"].get(CHAR_PAD_TOKEN, 0),
@@ -229,7 +230,7 @@ def train(model, train_data, dev_data, mapping, config):
     started_at = time.time()
     logger.info(
         "Training started | epochs=%d optimizer=%s scheduler=%s lr=%.5f emb_lr_scale=%.3f "
-        "momentum=%.3f weight_decay=%.6f char_mode=%s crf=%s",
+        "momentum=%.3f weight_decay=%.6f char_mode=%s char_window=%d crf=%s",
         config.training.epoch,
         config.training.optimizer_name,
         config.training.scheduler_name,
@@ -238,6 +239,7 @@ def train(model, train_data, dev_data, mapping, config):
         config.training.momentum,
         config.training.weight_decay,
         config.model.char_mode,
+        config.model.char_window_size,
         config.model.crf,
     )
 
