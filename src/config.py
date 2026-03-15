@@ -70,7 +70,7 @@ class TrainingConfig(BaseModel):
     weights: str = ""
     name: str = "competition_bilstm_crf"
     optimizer_name: Literal["sgd", "adam", "adamw", "rmsprop"] = "adamw"
-    learning_rate: float = Field(0.01, gt=0)
+    learning_rate: float = Field(0.001, gt=0)
     embedding_learning_rate_scale: float = Field(0.2, gt=0)
     momentum: float = 0.9
     weight_decay: float = Field(1e-4, ge=0)
