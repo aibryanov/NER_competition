@@ -58,7 +58,7 @@ class ModelConfig(BaseModel):
     char_lstm_dim: int = Field(30, gt=0)
     char_mode: Literal["CNN", "LSTM"] = "CNN"
     crf: bool = True
-    freeze_word_embeddings: bool = True
+    freeze_word_embeddings: bool = False
     lang: Literal["ru", "en", "de", "fr", "zh"] = "ru"
 
 
